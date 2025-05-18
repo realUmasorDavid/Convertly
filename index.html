@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Currency Converter</h1>
+        
+        <div class="mb-4">
+            <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+            <input type="number" id="amount" 
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                   placeholder="Enter amount" value="1" min="0.1">
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label for="from" class="block text-sm font-medium text-gray-700 mb-1">From</label>
+                <select id="from" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="USD">USD - United States Dollar</option>
+                    <option value="NGN">NGN - Naira</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="AUD">AUD - Australian Dollar</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                    <option value="CHF">CHF - Swiss Franc</option>
+                    <option value="CNY">CNY - Chinese Yuan</option>
+                    <option value="INR">INR - Indian Rupee</option>
+                </select>
+            </div>
+            
+            <div class="flex items-end">
+                <button id="swap" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
+            </div>
+            
+            <div>
+                <label for="to" class="block text-sm font-medium text-gray-700 mb-1">To</label>
+                <select id="to" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="NGN">NGN - Naira</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="USD">USD - United States Dollar</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="JPY">JPY - Japanese Yen</option>
+                    <option value="AUD">AUD - Australian Dollar</option>
+                    <option value="CAD">CAD - Canadian Dollar</option>
+                    <option value="CHF">CHF - Swiss Franc</option>
+                    <option value="CNY">CNY - Chinese Yuan</option>
+                    <option value="INR">INR - Indian Rupee</option>
+                </select>
+            </div>
+        </div>
+        
+        <button id="convert" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition mb-4">
+            Convert
+        </button>
+        
+        <div id="result" class="text-center p-4 bg-gray-50 rounded-lg hidden">
+            <div class="text-3xl font-bold text-blue-600 mb-1" id="converted-amount"></div>
+            <div class="text-sm text-gray-500" id="conversion-rate"></div>
+            <div class="text-xs text-gray-400 mt-2" id="last-updated"></div>
+        </div>
+        
+        <div id="error" class="text-center p-4 bg-red-50 text-red-600 rounded-lg hidden"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const amountInput = document.getElementById('amount');
+            const fromSelect = document.getElementById('from');
+            const toSelect = document.getElementById('to');
+            const convertBtn = document.getElementById('convert');
+            const swapBtn = document.getElementById('swap');
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const convertedAmount = document.getElementById('converted-amount');
+            const conversionRate = document.getElementById('conversion-rate');
+            const lastUpdated = document.getElementById('last-updated');
+            
+            const API_KEY = 'cur_live_pro1egg3TXf0Hm3BbmO72N0BmaZuw2QaCnlkEbyQ';
+            const API_URL = `https://api.currencyapi.com/v3/latest?apikey=${API_KEY}`;
+            
+            async function convertCurrency() {
+                const amount = parseFloat(amountInput.value);
+                const fromCurrency = fromSelect.value;
+                const toCurrency = toSelect.value;
+                
+                if (isNaN(amount) || amount <= 0) {
+                    showError('Please enter a valid amount');
+                    return;
+                }
+                
+                if (fromCurrency === toCurrency) {
+                    showError('Please select different currencies');
+                    return;
+                }
+                
+                try {
+                    convertBtn.disabled = true;
+                    convertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting...';
+                    
+                    const response = await fetch(`${API_URL}&base_currency=${fromCurrency}`);
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Failed to fetch exchange rates');
+                    }
+                    
+                    if (!data.data || !data.data[toCurrency]) {
+                        throw new Error('Currency not found in response');
+                    }
+                    
+                    const rate = data.data[toCurrency].value;
+                    const result = amount * rate;
+                    
+                    convertedAmount.textContent = toCurrency + ' ' + result.toFixed(2);
+                    conversionRate.textContent = `1 ${fromCurrency} = ${rate.toFixed(6)} ${toCurrency}`;
+                    lastUpdated.textContent = `Last updated: ${new Date(data.meta.last_updated_at).toLocaleString()}`;
+                    
+                    resultDiv.classList.remove('hidden');
+                    errorDiv.classList.add('hidden');
+                    
+                } catch (error) {
+                    showError(error.message || 'An error occurred during conversion');
+                    console.error('Conversion error:', error);
+                } finally {
+                    convertBtn.disabled = false;
+                    convertBtn.textContent = 'Convert';
+                }
+            }
+            
+            function swapCurrencies() {
+                const temp = fromSelect.value;
+                fromSelect.value = toSelect.value;
+                toSelect.value = temp;
+                
+                if (!resultDiv.classList.contains('hidden')) {
+                    convertCurrency();
+                }
+            }
+            
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('hidden');
+                resultDiv.classList.add('hidden');
+            }
+            
+            convertBtn.addEventListener('click', convertCurrency);
+            swapBtn.addEventListener('click', swapCurrencies);
+            
+            amountInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    convertCurrency();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
